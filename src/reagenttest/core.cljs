@@ -5,6 +5,7 @@
   )
 )
 
+;(def socket (io "http://localhost"))
 ;; Data
 (defn randomColor []
   (str "hsl(" (rand-int 360) ", 96%, 55%)")
@@ -18,6 +19,13 @@
   {:user "fred 11/01/17" :start 16 :end 17 :color (randomColor) }
 ])
 (def updatesAtom (r/atom fakeupdates))
+; TODO: load inital updates from encoded json on data attr somewhere... 
+(def socket (js/io "http://localhost:3000"))
+(.on socket "connect" #(println "Connected to socket"))
+;var socket = io('http://localhost');
+  ;socket.on('connect', function(){});
+  ;socket.on('event', function(data){});
+  ;socket.on('disconnect', function(){});
 ; data processing
 (defn txtfragmnets; get text fragments from a string and updates or entries that were maid aginst that string
   [txt updates]  
@@ -55,10 +63,10 @@
 
 (println "CLEAR")
 ;(.log js/console "Hello, world!")
-(cljs.pprint/pprint (txtfragmnets faketxt fakeupdates))
-(cljs.pprint/pprint (count (txtfragmnets faketxt fakeupdates)))
-(cljs.pprint/pprint (type (txtfragmnets faketxt fakeupdates)))
-(cljs.pprint/pprint (map #(type %) (txtfragmnets faketxt fakeupdates)))
+;(cljs.pprint/pprint (txtfragmnets faketxt fakeupdates))
+;(cljs.pprint/pprint (count (txtfragmnets faketxt fakeupdates)))
+;(cljs.pprint/pprint (type (txtfragmnets faketxt fakeupdates)))
+;(cljs.pprint/pprint (map #(type %) (txtfragmnets faketxt fakeupdates)))
 
 (defn home-page []
   [:div 
@@ -68,23 +76,8 @@
          (conj old {:user "kelsey 11/01/17" :start 18 :end 22 :color (randomColor) } )
         ))
       } "speak"]
-        ;:on-click #(swap! updatesAtom (fn [old]
-         ;(conj old {:user "kelsey 11/01/17" :start 18 :end 22 :color (randomColor) })
-         ;(println "clicking speak btn")
-         ;))
      [:button {:on-click #(cljs.pprint/pprint @updatesAtom)} "view"]
     ]
-    ;[:div.wordstream (map (fn [x] ([:p x])) [1 2 3 4])] 
-    ;[:div.wordstream (map #(identity [:div
-      ;[:p.text (:word %)]
-      ;[:p.text 
-       ;{:class (:type %)}
-       ;(:str %)
-      ;]
-      ;(when (= "past" (:type %)) [:div.bar {:style {:border-top-color (:color %)}}])
-      ;(when (= "past" (:type %)) [:p.user {:style {:color (:color %)}} (:user %)])
-      
-     ;]) (txtfragmnets faketxt fakeupdates)] 
     [:div.wordstream (map #(identity 
       [:div {:key (:key %)} 
         [:p.text {:class (:type %)} (:word %)]
@@ -95,10 +88,8 @@
     [:div.progressbar [:p "progressbar"]]
     [:div.rankings [:p "rankings"]]
   ]
-  ;[:div [:h2 "Welcome to Hell"]]
-  ;[:div [:h2 "Test"]]
-  
-  )
+)
+
 
 ;; -------------------------
 ;; Initialize app

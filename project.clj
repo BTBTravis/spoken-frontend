@@ -32,6 +32,8 @@
                          :output-to "public/js/app.js"
                          :output-dir "public/js/out"
                          :asset-path   "js/out"
+                         ;:npm-deps {:socket.io-client "2.0.4"}
+                         ;:install-deps true
                          :source-map true
                          :optimizations :none
                          :pretty-print  true}
