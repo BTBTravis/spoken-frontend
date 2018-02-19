@@ -2,24 +2,41 @@
   (:require
     [reagent.core :as r]
     [clojure.string :as str]
+    [taoensso.timbre :as timbre :refer [spy]]
+    ;[socket.io-client :as io]
   )
 )
 
 ;(def socket (io "http://localhost"))
 ;; Data
+
+(def log (.-log js/console))
 (defn randomColor []
   (str "hsl(" (rand-int 360) ", 96%, 55%)")
 )
 ; fake test data
 (def faketxt "The quick brown fox jumped over the lazy dog. Little did the fox know the dog was laying a trap for him. As soon as the foxed landed a snap of jaws and this rear leg was mangled")
 (def fakeupdates [
-  {:user "travis 10/24/17" :start 0 :end 5 :color (randomColor) }
-  {:user "jim 11/01/17" :start 6 :end 10 :color (randomColor) }
-  {:user "bob 11/01/17" :start 11 :end 15 :color (randomColor) }
-  {:user "fred 11/01/17" :start 16 :end 17 :color (randomColor) }
+  {:userstr "travis 10/24/17" :start 0 :end 5 :color (randomColor) }
+  {:userstr "jim 11/01/17" :start 6 :end 10 :color (randomColor) }
+  {:userstr "bob 11/01/17" :start 11 :end 15 :color (randomColor) }
+  {:userstr "fred 11/01/17" :start 16 :end 17 :color (randomColor) }
 ])
-(def updatesAtom (r/atom fakeupdates))
+(def updatesAtom (r/atom {}))
 ; TODO: load inital updates from encoded json on data attr somewhere... 
+;(.then (.get js/axios "localhost:3000/getallupdates") #(cljs.pprint/pprint %))
+(def initUpdates (->
+  (.get js/axios "http://localhost:3000/getallupdates"); Make ajax get call to backend to get the big list of updates 
+  (#(.then % (fn [x] (-> 
+    (js->clj x :keywordize-keys true); Convert the server responce from json to clj map with usable keys
+    ((fn [d] (:data d))); get the data key
+    ((fn [d] (:res d))); get the res key
+    ((fn [d] (spy (swap! updatesAtom (fn [old] (identity d)))))); Update the updateAtom with its some state
+    ;(#(spy %))
+    ))))
+))
+;(spy initUpdates)
+
 (def socket (js/io "http://localhost:3000"))
 (.on socket "connect" #(println "Connected to socket"))
 ;var socket = io('http://localhost');
@@ -73,7 +90,7 @@
     [:div.btns 
      [:button { :on-click 
         #(swap! updatesAtom (fn [old]
-         (conj old {:user "kelsey 11/01/17" :start 18 :end 22 :color (randomColor) } )
+         (conj old {:userstr "kelsey 11/01/17" :start 18 :end 22 :color (randomColor) } )
         ))
       } "speak"]
      [:button {:on-click #(cljs.pprint/pprint @updatesAtom)} "view"]
@@ -82,7 +99,7 @@
       [:div {:key (:key %)} 
         [:p.text {:class (:type %)} (:word %)]
         (when (not= nil (:color %)) [:div.bar {:style {:border-top-color (:color %)}}])
-        (when (not= nil (:user %)) [:p.user {:style {:color (:color %)}} (:user %)])
+        (when (not= nil (:userstr %)) [:p.user {:style {:color (:color %)}} (:userstr %)])
 
       ]) (txtfragmnets faketxt @updatesAtom ))]
     [:div.progressbar [:p "progressbar"]]
