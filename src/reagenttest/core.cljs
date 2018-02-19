@@ -8,34 +8,43 @@
 )
 
 ;(def socket (io "http://localhost"))
-;; Data
 
 (def log (.-log js/console))
+; TODO: Move randomColor to backend
 (defn randomColor []
   (str "hsl(" (rand-int 360) ", 96%, 55%)")
 )
-; fake test data
+;var elem_top = $("#my_item").offset()['top'];
+;var viewport_height = $(window).height();
+
+; Scroll to the current word is middle of the viewport
+(defn center []
+  (let [yDis (.-offsetLeft (.-parentElement (.querySelector js/document "p.current.text")))
+        width (.-innerWidth js/window)
+        el (.querySelector js/document "div.wordstream")]
+    (-> (spy (- yDis (/ width 2) ))
+        ;(spy {:yDis yDis :width width :el el})
+        ;(set! (.-name my-type) "Andy")
+        (#(spy (set! (.-scrollLeft el) %)))
+        (#(spy [yDis width el])))
+  )
+)
+
+; Data
 (def faketxt "The quick brown fox jumped over the lazy dog. Little did the fox know the dog was laying a trap for him. As soon as the foxed landed a snap of jaws and this rear leg was mangled")
-(def fakeupdates [
-  {:userstr "travis 10/24/17" :start 0 :end 5 :color (randomColor) }
-  {:userstr "jim 11/01/17" :start 6 :end 10 :color (randomColor) }
-  {:userstr "bob 11/01/17" :start 11 :end 15 :color (randomColor) }
-  {:userstr "fred 11/01/17" :start 16 :end 17 :color (randomColor) }
-])
-(def updatesAtom (r/atom {}))
-; TODO: load inital updates from encoded json on data attr somewhere... 
-;(.then (.get js/axios "localhost:3000/getallupdates") #(cljs.pprint/pprint %))
-(def initUpdates (->
+(def updatesAtom (r/atom {})); Atom to hold state of the story init loaded from ajax call then updated over websocket
+; Load inital updates from encoded json on data attr somewhere... 
+(->
   (.get js/axios "http://localhost:3000/getallupdates"); Make ajax get call to backend to get the big list of updates 
   (#(.then % (fn [x] (-> 
     (js->clj x :keywordize-keys true); Convert the server responce from json to clj map with usable keys
     ((fn [d] (:data d))); get the data key
     ((fn [d] (:res d))); get the res key
     ((fn [d] (spy (swap! updatesAtom (fn [old] (identity d)))))); Update the updateAtom with its some state
-    ;(#(spy %))
+    ;((fn [d] (centerWord)))
+    ; TODO: scroll to correct pos
     ))))
-))
-;(spy initUpdates)
+)
 
 (def socket (js/io "http://localhost:3000"))
 (.on socket "connect" #(println "Connected to socket"))
@@ -94,6 +103,7 @@
         ))
       } "speak"]
      [:button {:on-click #(cljs.pprint/pprint @updatesAtom)} "view"]
+     [:button {:on-click #(center)} "center"]
     ]
     [:div.wordstream (map #(identity 
       [:div {:key (:key %)} 
