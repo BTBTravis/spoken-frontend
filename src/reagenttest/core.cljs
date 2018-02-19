@@ -41,7 +41,7 @@
     ((fn [d] (:data d))); get the data key
     ((fn [d] (:res d))); get the res key
     ((fn [d] (spy (swap! updatesAtom (fn [old] (identity d)))))); Update the updateAtom with its some state
-    ;((fn [d] (centerWord)))
+    ;((fn [d] (center)))
     ; TODO: scroll to correct pos
     ))))
 )
@@ -93,7 +93,22 @@
 ;(cljs.pprint/pprint (count (txtfragmnets faketxt fakeupdates)))
 ;(cljs.pprint/pprint (type (txtfragmnets faketxt fakeupdates)))
 ;(cljs.pprint/pprint (map #(type %) (txtfragmnets faketxt fakeupdates)))
-
+(defn wordstream 
+  []  
+  (r/create-class                 ;; <-- expects a map of functions 
+    {:component-did-mount               ;; the name of a lifecycle function
+      #(println "component-did-mount")   ;; your implementation
+     :component-did-update #(center)
+     :display-name  "wordstream"  ;; for more helpful warnings & errors
+     :reagent-render        ;; Note:  is not :render
+         (fn []           ;; remember to repeat parameters
+            [:div.wordstream (map #(identity 
+              [:div {:key (:key %)} 
+                [:p.text {:class (:type %)} (:word %)]
+                (when (not= nil (:color %)) [:div.bar {:style {:border-top-color (:color %)}}])
+                (when (not= nil (:userstr %)) [:p.user {:style {:color (:color %)}} (:userstr %)])
+              ]) (txtfragmnets faketxt @updatesAtom ))]
+)}))
 (defn home-page []
   [:div 
     [:div.btns 
@@ -105,13 +120,7 @@
      [:button {:on-click #(cljs.pprint/pprint @updatesAtom)} "view"]
      [:button {:on-click #(center)} "center"]
     ]
-    [:div.wordstream (map #(identity 
-      [:div {:key (:key %)} 
-        [:p.text {:class (:type %)} (:word %)]
-        (when (not= nil (:color %)) [:div.bar {:style {:border-top-color (:color %)}}])
-        (when (not= nil (:userstr %)) [:p.user {:style {:color (:color %)}} (:userstr %)])
-
-      ]) (txtfragmnets faketxt @updatesAtom ))]
+    [wordstream]
     [:div.progressbar [:p "progressbar"]]
     [:div.rankings [:p "rankings"]]
   ]
