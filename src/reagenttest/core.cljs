@@ -3,7 +3,6 @@
     [reagent.core :as r]
     [clojure.string :as str]
     [taoensso.timbre :as timbre :refer [spy]]
-    ;[socket.io-client :as io]
   )
 )
 
@@ -36,18 +35,21 @@
 ; Load inital updates from encoded json on data attr somewhere... 
 (->
   (.get js/axios "http://localhost:3000/getallupdates"); Make ajax get call to backend to get the big list of updates 
-  (#(.then % (fn [x] (-> 
-    (js->clj x :keywordize-keys true); Convert the server responce from json to clj map with usable keys
-    ((fn [d] (:data d))); get the data key
-    ((fn [d] (:res d))); get the res key
-    ((fn [d] (spy (swap! updatesAtom (fn [old] (identity d)))))); Update the updateAtom with its some state
-    ;((fn [d] (center)))
-    ; TODO: scroll to correct pos
+  (#(.then % (fn [x]  
+    (->
+      (js->clj x :keywordize-keys true); Convert the server responce from json to clj map with usable keys
+      ((fn [d] (spy(:data d)))); get the data key
+      (reverse)
+    ;((fn [d] (spy(:res d)))); get the res key
+    ((fn [d] (swap! updatesAtom (fn [old] (identity d))))); Update the updateAtom with its some state
+    ;;((fn [d] (center)))
+    ;; TODO: scroll to correct pos
     ))))
 )
 
-(def socket (js/io "http://localhost:3000"))
-(.on socket "connect" #(println "Connected to socket"))
+;(def socket (js/io "http://localhost:3000"))
+;(.on socket "connect" #(println "Connected to socket"))
+;(.on socket "update" #(spy %))
 ;var socket = io('http://localhost');
   ;socket.on('connect', function(){});
   ;socket.on('event', function(data){});
@@ -70,6 +72,7 @@
           )  nil updates)
          ))
     )
+    ;(#(spy %))
     ((fn [words]; split fragmnets into seprate seq based on user  
       (conj
         (reverse (map (fn [x] (reverse (drop (:start x) (take (+ 1 (:end x)) words)))) updates))
@@ -106,7 +109,7 @@
               [:div {:key (:key %)} 
                 [:p.text {:class (:type %)} (:word %)]
                 (when (not= nil (:color %)) [:div.bar {:style {:border-top-color (:color %)}}])
-                (when (not= nil (:userstr %)) [:p.user {:style {:color (:color %)}} (:userstr %)])
+                (when (not= nil (:user %)) [:p.user {:style {:color (:color %)}} (:user %)])
               ]) (txtfragmnets faketxt @updatesAtom ))]
 )}))
 (defn home-page []
@@ -114,7 +117,7 @@
     [:div.btns 
      [:button { :on-click 
         #(swap! updatesAtom (fn [old]
-         (conj old {:userstr "kelsey 11/01/17" :start 18 :end 22 :color (randomColor) } )
+         (conj old {:user "kelsey 11/01/17" :start 0 :end 5 :color (randomColor) } )
         ))
       } "speak"]
      [:button {:on-click #(cljs.pprint/pprint @updatesAtom)} "view"]
