@@ -40,16 +40,51 @@
       (js->clj x :keywordize-keys true); Convert the server responce from json to clj map with usable keys
       ((fn [d] (spy(:data d)))); get the data key
       (reverse)
-    ;((fn [d] (spy(:res d)))); get the res key
-    ((fn [d] (swap! updatesAtom (fn [old] (identity d))))); Update the updateAtom with its some state
-    ;;((fn [d] (center)))
-    ;; TODO: scroll to correct pos
-    ))))
+      ((fn [d] (swap! updatesAtom (fn [old] (identity d))))); Update the updateAtom with its some state
+      ;((fn [d] (center)))
+      ;TODO: scroll to correct pos
+  ))))
 )
-
-;(def socket (js/io "http://localhost:3000"))
-;(.on socket "connect" #(println "Connected to socket"))
-;(.on socket "update" #(spy %))
+;; SOCKET.io
+(def socket (js/io "http://localhost:3000"))
+(.on socket "connect" #(println "Connected to socket"))
+(.on socket "update" #(spy %))
+;socket.emit('chat message', $('#m').val());,c 
+;: WATSON 
+(defn speek []
+  (->
+    (.get js/axios "http://localhost:3000/api/speech-to-text/token"); Make ajax get call to backend to get the big list of updates 
+    (#(.then % (fn [x]  
+      (->
+        (js->clj x :keywordize-keys true); Convert the server responce from json to clj map with usable keys
+        ((fn [d] (spy(:data d)))); get the data key
+        ((fn [token] 
+          (let [stream (.recognizeMicrophone (.-SpeechToText js/WatsonSpeech) 
+            (js-obj "token" token "objectMode" true "extractResults" true "format" false))]
+            (.on stream "data" (fn [data] 
+              (.emit socket "word" data)))
+            (.on stream "error" (fn [data] (println data)))
+            (js/setTimeout (fn [x] (.stop stream)) 5000)
+          )
+        ))
+    ))))
+  )
+)
+;(speek)
+;var stream = recognizeMic({
+            ;token: token,
+            ;objectMode: true, // send objects instead of text
+            ;extractResults: true, // convert {results: [{alternatives:[...]}], result_index: 0} to {alternatives: [...], index: 0}
+            ;format: false // optional - performs basic formatting on the results such as capitals an periods
+        ;});
+        ;stream.on('data', (data) => {
+          ;this.setState({
+            ;text: data.alternatives[0].transcript
+          ;})
+        ;});
+        ;stream.on('error', function(err) {
+            ;console.log(err);
+;});
 ;var socket = io('http://localhost');
   ;socket.on('connect', function(){});
   ;socket.on('event', function(data){});
@@ -120,6 +155,7 @@
          (conj old {:user "kelsey 11/01/17" :start 0 :end 5 :color (randomColor) } )
         ))
       } "speak"]
+     [:button {:on-click speek} "Speak"]
      [:button {:on-click #(cljs.pprint/pprint @updatesAtom)} "view"]
      [:button {:on-click #(center)} "center"]
     ]
