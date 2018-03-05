@@ -6,7 +6,8 @@
   )
 )
 
-;(def socket (io "http://localhost"))
+;(def server_url "http://localhost:3000")
+(def server_url "https://btbtravis-spoken2.herokuapp.com")
 
 (def log (.-log js/console))
 ; TODO: Move randomColor to backend
@@ -32,9 +33,10 @@
 ; Data
 (def faketxt "The quick brown fox jumped over the lazy dog. Little did the fox know the dog was laying a trap for him. As soon as the foxed landed a snap of jaws and this rear leg was mangled")
 (def updatesAtom (r/atom {})); Atom to hold state of the story init loaded from ajax call then updated over websocket
+(def username (r/atom ""))
 ; Load inital updates from encoded json on data attr somewhere... 
 (->
-  (.get js/axios "http://localhost:3000/getallupdates"); Make ajax get call to backend to get the big list of updates 
+  (.get js/axios (str server_url "/getallupdates")); Make ajax get call to backend to get the big list of updates 
   (#(.then % (fn [x]  
     (->
       (js->clj x :keywordize-keys true); Convert the server responce from json to clj map with usable keys
@@ -46,14 +48,14 @@
   ))))
 )
 ;; SOCKET.io
-(def socket (js/io "http://localhost:3000"))
+(def socket (js/io server_url))
 (.on socket "connect" #(println "Connected to socket"))
 (.on socket "update" #(spy %))
 ;socket.emit('chat message', $('#m').val());,c 
 ;: WATSON 
 (defn speek []
   (->
-    (.get js/axios "http://localhost:3000/api/speech-to-text/token"); Make ajax get call to backend to get the big list of updates 
+    (.get js/axios (str server_url "/api/speech-to-text/token")); Make ajax get call to backend to get the big list of updates 
     (#(.then % (fn [x]  
       (->
         (js->clj x :keywordize-keys true); Convert the server responce from json to clj map with usable keys
@@ -62,7 +64,8 @@
           (let [stream (.recognizeMicrophone (.-SpeechToText js/WatsonSpeech) 
             (js-obj "token" token "objectMode" true "extractResults" true "format" false))]
             (.on stream "data" (fn [data] 
-              (.emit socket "word" data)))
+              (.emit socket "word" (clj->js {:words data :user @username}))
+            ))
             (.on stream "error" (fn [data] (println data)))
             (js/setTimeout (fn [x] (.stop stream)) 5000)
           )
@@ -71,24 +74,6 @@
   )
 )
 ;(speek)
-;var stream = recognizeMic({
-            ;token: token,
-            ;objectMode: true, // send objects instead of text
-            ;extractResults: true, // convert {results: [{alternatives:[...]}], result_index: 0} to {alternatives: [...], index: 0}
-            ;format: false // optional - performs basic formatting on the results such as capitals an periods
-        ;});
-        ;stream.on('data', (data) => {
-          ;this.setState({
-            ;text: data.alternatives[0].transcript
-          ;})
-        ;});
-        ;stream.on('error', function(err) {
-            ;console.log(err);
-;});
-;var socket = io('http://localhost');
-  ;socket.on('connect', function(){});
-  ;socket.on('event', function(data){});
-  ;socket.on('disconnect', function(){});
 ; data processing
 (defn txtfragmnets; get text fragments from a string and updates or entries that were maid aginst that string
   [txt updates]  
@@ -131,6 +116,11 @@
 ;(cljs.pprint/pprint (count (txtfragmnets faketxt fakeupdates)))
 ;(cljs.pprint/pprint (type (txtfragmnets faketxt fakeupdates)))
 ;(cljs.pprint/pprint (map #(type %) (txtfragmnets faketxt fakeupdates)))
+(defn user-input []
+    [:input {:type "text"
+             :value @username
+             :on-change #(reset! username (-> % .-target .-value))}])
+
 (defn wordstream 
   []  
   (r/create-class                 ;; <-- expects a map of functions 
@@ -150,6 +140,7 @@
 (defn home-page []
   [:div 
     [:div.btns 
+     [:p "Name: " [user-input]]
      [:button { :on-click 
         #(swap! updatesAtom (fn [old]
          (conj old {:user "kelsey 11/01/17" :start 0 :end 5 :color (randomColor) } )
@@ -160,6 +151,7 @@
      [:button {:on-click #(center)} "center"]
     ]
     [wordstream]
+    [:p "Username: " @username]
     [:div.progressbar [:p "progressbar"]]
     [:div.rankings [:p "rankings"]]
   ]

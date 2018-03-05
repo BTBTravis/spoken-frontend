@@ -40,6 +40,9 @@ a:hover {
   text-decoration: underline;
 }
 
+p {
+    color: white;
+}
 #app{
     background: linear-gradient(180deg, #803232 0%, rgba(48, 48, 48, 0.933702) 0.01%, #292929 100%), #C4C4C4;
     width: 100%;
