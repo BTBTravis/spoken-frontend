@@ -44,7 +44,7 @@
   (#(.then % (fn [x]  
     (->
       (js->clj x :keywordize-keys true); Convert the server responce from json to clj map with usable keys
-      ((fn [d] (spy(:data d)))); get the data key
+      ((fn [d] (:data d))); get the data key
       (reverse)
       ((fn [d] (swap! updatesAtom (fn [old] (identity d))))); Update the updateAtom with its some state
       ;((fn [d] (center)))
@@ -54,7 +54,10 @@
 ;; SOCKET.io
 (def socket (js/io server_url))
 (.on socket "connect" #(println "Connected to socket"))
-(.on socket "update" #(spy %))
+;(.on socket "update" #(spy (js->clj (.parse js/JSON  %))))
+(.on socket "update" #(swap! updatesAtom (fn [old]
+  (spy @updatesAtom)
+  (spy (reverse (js->clj (.parse js/JSON  %) :keywordize-keys true))))))
 ;socket.emit('chat message', $('#m').val());,c 
 ;: WATSON 
 (defn speek []
@@ -86,7 +89,7 @@
                (map-indexed (fn [i obj]  (conj obj {:i i}))); insert the index of the word into the map ex. {:word "hello" :i 0}
        )
        currentId (+ 1 (last (:wordIds (last updates))))]
-    (println {:currentId currentId :words words})
+    ;(println {:currentId currentId :words words})
     (-> updates
       (#(map (fn [a] (conj a {:part (reduce (fn [string word] 
         (if(in? (:wordIds a) (:i word)) (str string " " (:word word)) string)
@@ -100,9 +103,10 @@
           ((fn [a] (reduce (fn [string wordMap] (str string " " (:word wordMap))) "" a)))
         )
       }))
+      
       (reverse); idk why the reverse calls are needed
       ((fn [frags] (map-indexed (fn [i frag] (assoc frag :key i)) frags))) ;set unique keys
-      (#(spy %))
+      ;(#(spy %))
       ;((fn [words]; split fragmnets into seprate seq based on u    ;(reverse); idk why the reverse calls are needed
       ;(#(into [] %)); lazy seq -> map
       ;((fn [frags] (map-indexed (fn [i frag] (assoc frag :key i)) frags))) ;set unique keys
