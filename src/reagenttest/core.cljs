@@ -6,14 +6,18 @@
   )
 )
 
-;(def server_url "http://localhost:3000")
-(def server_url "https://btbtravis-spoken2.herokuapp.com")
+(def server_url "http://localhost:3000")
+;(def server_url "https://btbtravis-spoken5.herokuapp.com")
 
 (def log (.-log js/console))
 ; TODO: Move randomColor to backend
 (defn randomColor []
   (str "hsl(" (rand-int 360) ", 96%, 55%)")
 )
+(defn in?
+  "true if coll contains elm"
+  [coll elm]
+  (some #(= elm %) coll))
 ;var elem_top = $("#my_item").offset()['top'];
 ;var viewport_height = $(window).height();
 
@@ -75,47 +79,38 @@
 )
 ;(speek)
 ; data processing
-(defn txtfragmnets; get text fragments from a string and updates or entries that were maid aginst that string
+(defn txtfragmnets "get text fragments from a string and updates or entries that were maid aginst that string"
   [txt updates]  
-  (->
-    (->> (str/split txt #"\s"); split txt up by space
-         (map #(identity {:word %})); create a map out of these words ex. {:word "hello"}
-         (map-indexed (fn [i obj]  (conj obj {:i i}))); insert the index of the word into the map ex. {:word "hello" :i 0}
-         ; bind the correct user to this object or nil ex. {:word "hello" :i 0 :user "travis002"}
-         (map #(conj 
-          % 
-          (reduce (fn [user val] 
-            (if (and (>= (:end val) (:i %)) (<= (:start val) (:i %)))
-             val 
-             user
-            )
-          )  nil updates)
-         ))
+  (let [words (->> (str/split txt #"\s"); split txt up by space
+               (map #(identity {:word %})); create a map out of these words ex. {:word "hello"}
+               (map-indexed (fn [i obj]  (conj obj {:i i}))); insert the index of the word into the map ex. {:word "hello" :i 0}
+       )
+       currentId (+ 1 (last (:wordIds (last updates))))]
+    (println {:currentId currentId :words words})
+    (-> updates
+      (#(map (fn [a] (conj a {:part (reduce (fn [string word] 
+        (if(in? (:wordIds a) (:i word)) (str string " " (:word word)) string)
+        ) "" words)})) %))
+      (#(map (fn [a] (assoc a :type "past")) %))
+      (reverse); idk why the reverse calls are needed
+      (#(conj % {:type "current" :part (:word (nth words currentId))})); add the current word
+      (#(conj % {:type "future" :part 
+        (-> words
+          ((fn [a] (filter (fn [word] (> (:i word) currentId)) a)))
+          ((fn [a] (reduce (fn [string wordMap] (str string " " (:word wordMap))) "" a)))
+        )
+      }))
+      (reverse); idk why the reverse calls are needed
+      ((fn [frags] (map-indexed (fn [i frag] (assoc frag :key i)) frags))) ;set unique keys
+      (#(spy %))
+      ;((fn [words]; split fragmnets into seprate seq based on u    ;(reverse); idk why the reverse calls are needed
+      ;(#(into [] %)); lazy seq -> map
+      ;((fn [frags] (map-indexed (fn [i frag] (assoc frag :key i)) frags))) ;set unique keys
     )
-    ;(#(spy %))
-    ((fn [words]; split fragmnets into seprate seq based on user  
-      (conj
-        (reverse (map (fn [x] (reverse (drop (:start x) (take (+ 1 (:end x)) words)))) updates))
-        (take 1 (drop (+ (:end (last updates)) 1) words))
-        (reverse (lazy-seq (drop (+ (:end (last updates)) 2) words)))
-      )
-    ))
-    (reverse); idk why the reverse calls are needed
-    ((fn [x] (map #(assoc (first %) :word (reduce (fn [carry val] (str (:word val) " "  carry)) "" %)) x ))); join words into one long string joinning with space
-    ((fn [x] (map #(dissoc % :i) x))); remove the :i key it is no longer needed
-    (#(into [] %)); lazy seq -> map
-    (#(assoc-in % [(- (count %) 1) :type] "future")); attach future key to last element in vector
-    (#(assoc-in % [(- (count %) 2) :type] "current")); attach current key to second to last element in vector
-    ((fn [frags] (map-indexed (fn [i frag] (assoc frag :key i)) frags))) ;set unique keys
   )
 )
 
 (println "CLEAR")
-;(.log js/console "Hello, world!")
-;(cljs.pprint/pprint (txtfragmnets faketxt fakeupdates))
-;(cljs.pprint/pprint (count (txtfragmnets faketxt fakeupdates)))
-;(cljs.pprint/pprint (type (txtfragmnets faketxt fakeupdates)))
-;(cljs.pprint/pprint (map #(type %) (txtfragmnets faketxt fakeupdates)))
 (defn user-input []
     [:input {:type "text"
              :value @username
@@ -132,7 +127,7 @@
          (fn []           ;; remember to repeat parameters
             [:div.wordstream (map #(identity 
               [:div {:key (:key %)} 
-                [:p.text {:class (:type %)} (:word %)]
+                [:p.text {:class (:type %)} (:part %)]
                 (when (not= nil (:color %)) [:div.bar {:style {:border-top-color (:color %)}}])
                 (when (not= nil (:user %)) [:p.user {:style {:color (:color %)}} (:user %)])
               ]) (txtfragmnets faketxt @updatesAtom ))]
