@@ -6,8 +6,8 @@
   )
 )
 
-(def server_url "http://localhost:3000")
-;(def server_url "https://btbtravis-spoken5.herokuapp.com")
+;(def server_url "http://localhost:3000")
+(def server_url "https://frozen-tor-81390.herokuapp.com")
 
 (def log (.-log js/console))
 ; TODO: Move randomColor to backend
@@ -132,7 +132,7 @@
             [:div.wordstream (map #(identity 
               [:div {:key (:key %)} 
                 [:p.text {:class (:type %)} (:part %)]
-                (when (not= nil (:color %)) [:div.bar {:style {:border-top-color (:color %)}}])
+                (when (= (:type %) "past") [:div.bar {:style {:border-top-color (randomColor)}}])
                 (when (not= nil (:user %)) [:p.user {:style {:color (:color %)}} (:user %)])
               ]) (txtfragmnets faketxt @updatesAtom ))]
 )}))
@@ -140,19 +140,10 @@
   [:div 
     [:div.btns 
      [:p "Name: " [user-input]]
-     [:button { :on-click 
-        #(swap! updatesAtom (fn [old]
-         (conj old {:user "kelsey 11/01/17" :start 0 :end 5 :color (randomColor) } )
-        ))
-      } "speak"]
      [:button {:on-click speek} "Speak"]
-     [:button {:on-click #(cljs.pprint/pprint @updatesAtom)} "view"]
      [:button {:on-click #(center)} "center"]
     ]
     [wordstream]
-    [:p "Username: " @username]
-    [:div.progressbar [:p "progressbar"]]
-    [:div.rankings [:p "rankings"]]
   ]
 )
 
